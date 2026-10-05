@@ -85,9 +85,10 @@ export default function ProductLookup() {
   const warrantyResult = warrantyData as
     | [boolean, bigint, bigint]
     | undefined;
-
   const isValid = warrantyResult?.[0] ?? false;
-
+  const imageUrl = productData?.imageCID
+  ? `https://gateway.pinata.cloud/ipfs/${productData.imageCID}`
+  : "";
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -250,6 +251,32 @@ export default function ProductLookup() {
 
             <Divider sx={{ mb: 2 }} />
 
+            {/* Product Image */}
+            {imageUrl && (
+              <Box
+                sx={{
+                  mb: 2.5,
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <Box
+                  component="img"
+                  src={imageUrl}
+                  alt={productData.name}
+                  sx={{
+                    width: "100%",
+                    maxWidth: 320,
+                    height: 220,
+                    objectFit: "contain",
+                    borderRadius: 2,
+                    border: "1px solid #E5E7EB",
+                    bgcolor: "#FFFFFF",
+                    p: 1,
+                  }}
+                />
+              </Box>
+            )}
             {/* Product Information */}
             <Stack direction="row" spacing={1} alignItems="center" mb={1.5}>
               <Inventory2 sx={{ fontSize: 19, color: "#4F46E5" }} />

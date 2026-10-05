@@ -79,7 +79,7 @@ export default function Home() {
       key: "transfer",
       label: "Chuyển quyền sở hữu",
       icon: <SwapHoriz sx={{ fontSize: 18 }} />,
-      roles: ["manufacturer"],
+      roles: ["manufacturer", "customer"],
     },
     {
       key: "admin",

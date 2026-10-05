@@ -33,7 +33,8 @@ export default function RegisterProduct() {
   const [name, setName] = useState("");
   const [model, setModel] = useState("");
   const [imageCID, setImageCID] = useState("");
-
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [formError, setFormError] = useState("");
   const [successToastOpen, setSuccessToastOpen] = useState(false);
   const [errorToastOpen, setErrorToastOpen] = useState(false);
@@ -76,22 +77,56 @@ export default function RegisterProduct() {
     if (writeError) resetWriteContract();
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     clearErrors();
 
     if (!productId.trim() || !name.trim() || !model.trim()) {
-      setFormError("Vui lòng điền đầy đủ các thông tin bắt buộc (*)");
-      return;
+        setFormError("Vui lòng điền đầy đủ các thông tin bắt buộc (*)");
+        return;
     }
 
-    writeContract({
-      address: CHAIN_WARRANTY_ADDRESS,
-      abi: CHAIN_WARRANTY_ABI,
-      functionName: "registerProduct",
-      args: [productId.trim(), name.trim(), model.trim(), imageCID.trim()],
-    });
-  };
+    let cid = imageCID;
+
+    try {
+        if (imageFile) {
+        setIsUploading(true);
+
+        const formData = new FormData();
+        formData.append("file", imageFile);
+
+        const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Upload ảnh thất bại");
+        }
+
+        cid = data.cid;
+
+        console.log("Pinata response:", data);
+        console.log("Uploaded CID:", cid);
+
+        setImageCID(cid);
+        }
+
+        writeContract({
+        address: CHAIN_WARRANTY_ADDRESS,
+        abi: CHAIN_WARRANTY_ABI,
+        functionName: "registerProduct",
+        args: [productId.trim(), name.trim(), model.trim(), cid.trim()],
+        });
+    } catch (error) {
+        console.error("Image upload error:", error);
+        setFormError("Không thể upload ảnh lên IPFS. Vui lòng thử lại.");
+    } finally {
+        setIsUploading(false);
+    }
+    };
 
   const isProcessing = isPending || (!!hash && isConfirming);
 
@@ -198,34 +233,74 @@ export default function RegisterProduct() {
             }}
           />
 
-          {/* Image CID */}
-          <TextField
+          {/* Product Image */}
+        <Box>
+        <Button
+            component="label"
+            variant="outlined"
+            startIcon={<ImageIcon />}
             fullWidth
-            size="small"
-            label="IPFS Image CID (Không bắt buộc)"
-            placeholder="Ví dụ: QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco"
-            value={imageCID}
-            onFocus={clearErrors}
+            sx={{
+            py: 1.2,
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 600,
+            }}
+            disabled={isUploading || isProcessing}
+        >
+            {isUploading ? "Đang upload ảnh lên IPFS..." : "Chọn ảnh sản phẩm"}
+            <input
+            type="file"
+            hidden
+            accept="image/*"
             onChange={(e) => {
-              clearErrors();
-              setImageCID(e.target.value);
+                clearErrors();
+
+                const file = e.target.files?.[0];
+
+                if (file) {
+                setImageFile(file);
+                setImageCID("");
+                }
             }}
-            helperText="Nhập hash ảnh lưu trên IPFS nếu có"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <ImageIcon fontSize="small" sx={{ color: "#6B7280" }} />
-                </InputAdornment>
-              ),
-            }}
-          />
+            />
+        </Button>
+
+        {imageFile && (
+            <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 1 }}
+            >
+            Đã chọn: {imageFile.name}
+            </Typography>
+        )}
+
+        {imageCID && (
+            <Typography
+            variant="caption"
+            color="success.main"
+            sx={{ display: "block", mt: 0.5 }}
+            >
+            Ảnh đã upload IPFS: {imageCID}
+            </Typography>
+        )}
+
+        <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mt: 0.5 }}
+        >
+            Không bắt buộc. Ảnh sẽ được lưu trên IPFS.
+        </Typography>
+        </Box>
 
           {/* Nút đăng ký */}
           <Button
             type="submit"
             variant="contained"
             disableElevation
-            disabled={isProcessing}
+            disabled={isProcessing || isUploading}
             sx={{
               py: 1.2,
               borderRadius: 2,
@@ -236,18 +311,23 @@ export default function RegisterProduct() {
               "&:hover": { bgcolor: "#4338CA" },
             }}
           >
-            {isPending ? (
-              <Stack direction="row" spacing={1} alignItems="center">
-                <CircularProgress size={18} sx={{ color: "#FFFFFF" }} />
-                <span>Đang chờ xác nhận từ MetaMask...</span>
-              </Stack>
-            ) : hash && isConfirming ? (
-              <Stack direction="row" spacing={1} alignItems="center">
-                <CircularProgress size={18} sx={{ color: "#FFFFFF" }} />
-                <span>Đang chờ giao dịch được xác nhận...</span>
-              </Stack>
-            ) : (
-              "Đăng ký sản phẩm"
+            {isUploading ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <CircularProgress size={18} sx={{ color: "#FFFFFF" }} />
+                    <span>Đang upload ảnh lên IPFS...</span>
+                </Stack>
+                ) : isPending ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <CircularProgress size={18} sx={{ color: "#FFFFFF" }} />
+                    <span>Đang chờ xác nhận từ MetaMask...</span>
+                </Stack>
+                ) : hash && isConfirming ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <CircularProgress size={18} sx={{ color: "#FFFFFF" }} />
+                    <span>Đang chờ giao dịch được xác nhận...</span>
+                </Stack>
+                ) : (
+                "Đăng ký sản phẩm"
             )}
           </Button>
         </Stack>

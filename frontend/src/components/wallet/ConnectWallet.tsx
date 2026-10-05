@@ -31,7 +31,9 @@ export default function ConnectWallet() {
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-
+  const metaMaskConnector = connectors.find(
+    (connector) => connector.name === "MetaMask"
+   );
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -184,35 +186,36 @@ export default function ConnectWallet() {
 
   // TRẠNG THÁI 2: CHƯA KẾT NỐI VÍ
   return (
-    <Stack direction="row" spacing={1} flexWrap="wrap">
-      {connectors.map((connector) => (
-        <Button
-          key={connector.uid}
-          variant="contained"
-          disableElevation
-          onClick={() => connect({ connector })}
-          disabled={isPending}
-          startIcon={
-            isPending ? (
-              <CircularProgress size={16} sx={{ color: "#FFFFFF" }} />
-            ) : (
-              <AccountBalanceWallet fontSize="small" />
-            )
-          }
-          sx={{
-            borderRadius: 2,
-            py: 0.9,
-            px: 2,
-            bgcolor: "#4F46E5",
-            textTransform: "none",
-            fontWeight: 600,
-            fontSize: "14px",
-            "&:hover": { bgcolor: "#4338CA" },
-          }}
-        >
-          {isPending ? "Đang kết nối..." : `Kết nối ${connector.name}`}
-        </Button>
-      ))}
-    </Stack>
+    <Button
+    variant="contained"
+    disableElevation
+    onClick={() => {
+        if (metaMaskConnector) {
+        connect({ connector: metaMaskConnector });
+        }
+    }}
+    disabled={isPending || !metaMaskConnector}
+    startIcon={
+        isPending ? (
+        <CircularProgress size={16} sx={{ color: "#FFFFFF" }} />
+        ) : (
+        <AccountBalanceWallet fontSize="small" />
+        )
+    }
+    sx={{
+        borderRadius: 2,
+        py: 0.9,
+        px: 2,
+        bgcolor: "#4F46E5",
+        textTransform: "none",
+        fontWeight: 600,
+        fontSize: "14px",
+        "&:hover": {
+        bgcolor: "#4338CA",
+        },
+    }}
+    >
+    {isPending ? "Đang kết nối..." : "Kết nối MetaMask"}
+    </Button>
   );
 }
